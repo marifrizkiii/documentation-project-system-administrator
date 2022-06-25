@@ -8,5 +8,5 @@ Korelasi peristiwa dan konsol alarm perusahaan – Ini memiliki kemampuan untuk 
 Pemantauan layanan bisnis (BSM) dengan dukungan untuk memperingatkan perubahan status layanan, multi-tenancy untuk Layanan, analisis dampak, impor/ekspor untuk pohon layanan, kemampuan u
 Visualisasi lanjutan – ini terdiri dari grafik bertumpuk, anotasi grafik, widget status host lanjutan, widget acara dari waktu ke waktu, peta geografis, dll.
   
-* [Cara Menjalankan Zabbix Server 6 di Docker Containers](https://marifrizkiii.github.io/documentation-project-system-administrator/#Installation_Zabbix_Server_With_Docker)              
-* For more details, you can visit my portfolio, [Portfolio](https://marifrizkiii.github.io/documentation-project-installation/)
+* [Cara Menjalankan Zabbix Server 6 di Docker Containers](https://marifrizkiii.github.io/documentation-project-installation/#Installation_Zabbix_Server_With_Docker)              
+* For more details, you can visit my portfolio, [Portfolio](https://marifrizkiii.github.io/documentation-project-system-administrator/)
