@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Note Installation Documents</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <nav id="navbar">
+      <header>My Documents Installation Project</header>
+      <a href="#Firewal" class="nav-link">Firewal</a>
+      <a href="#Installation_Zabbix_Server_With_Docker" class="nav-link">Installation Zabbix Server With Docker</a>
+      <a href="#Installation_Snort" class="nav-link">Installation Snort</a>
+      <a href="#Installation_Snowl_Snort_GUI" class="nav-link">Installation Snowl-Snort GUI</a>
+      <a href="#Installation_Rkhunter" class="nav-link">Installation Rkhunter</a>
+      <a href="#Installation_Nagios" class="nav-link">Installation NaGIOS</a>
+      <a href="#Installation_Zabbix" class="nav-link">Installation Zabbix</a>
+      <a href="#Open_VPN_IPv4" class="nav-link">Open VPN IPv4</a>
+    </nav>
+    <main id="main-doc">
+      <section class="main-section" id="Firewal">
+        <header>What Is a Firewall?</header>
+        <p>
+          A firewall is a network security device that monitors incoming and outgoing network traffic and decides whether to allow or block specific traffic based on a defined set of security rules. Firewalls have been a first line of
+          defense in network security for over 25 years. They establish a barrier between secured and controlled internal networks that can be trusted and untrusted outside networks, such as the Internet. A firewall can be hardware,
+          software, or both.
+        </p>
+      </section>
+
+      <section class="main-section" id="Installation_Zabbix_Server_With_Docker">
+        <header>Cara Menjalankan Zabbix Server 6 di Docker Containers</header>
+        <p>menjalankan Zabbix Server 6.0 LTS di Docker Containers. Zabbix adalah alat kelas perusahaan yang kuat dan gratis dan open-source yang digunakan untuk memantau dan menganalisis kinerja komponen. Zabbix menawarkan pemantauan jaringan secara real-time, mengidentifikasi kesalahan segera setelah terjadi, dan mengirimkan peringatan ke tim respons. Ini membantu untuk memastikan kelangsungan bisnis. Zabbix memiliki inti berdasarkan bahasa C dengan frontend Java dan PHP.
+Arsitektur Zabbix terdiri dari server Zabbix dan Klien. Server biasanya berkomunikasi dengan klien asli yang dikenal sebagai agen Zabbix. Agen dapat berupa sistem Linux, Windows, atau NIX. Agen Zabbix adalah perangkat lunak klien yang diinstal pada mesin klien untuk mengumpulkan log pemantauan dan mengirimkannya ke server.
+Di bawah ini adalah ilustrasi arsitektur Zabbix.</p>
+        <p>
+        Instal Docker CE di Sistem Anda
+        </p>
+        <code>
+          <pre>
+[arif@server-centos7 ~]$ sudo yum install dnf
+[arif@server-centos7 ~]$ curl -fsSL get.docker.com -o get-docker.sh
+[arif@server-centos7 ~]$ sudo sh get-docker.sh
+[arif@server-centos7 ~]$ sudo dnf install -y yum-utils
+[arif@server-centos7 ~]$ sudo yum-config-manasudo dnf -y install docker-ce docker-ce-cli containerd.io
+[arif@server-centos7 ~]$ sudo dnf -y install docker-ce docker-ce-cli containerd.io</pre>
+        </code>
+        <p>Check Version Docker</p>
+        <code>
+          <pre>
+[arif@server-centos7 ~]$ docker --version 
+Docker version 20.10.17, build 100c701</pre>
+        </code>
+        <p>
+Set Biar Auto Running 
+        </p>
+        <code>
+          <pre>
+[arif@server-centos7 ~]$ sudo systemctl enable --now docker</pre>
+        </code>
+          <p>
+Add user
+        </p>
+        <code>
+          <pre>
+[arif@server-centos7 ~]$ sudo usermod -aG docker $USER
+[arif@server-centos7 ~]$ newgrp docker</pre>
+        </code>
+        <p>
+Next – Buat Volume Persisten Data Zabbix
+Agar data Zabbix tetap ada, kita perlu membuat volume untuk data tersebut. Untuk Zabbix, kita membutuhkan volume berikut:</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# sudo mkdir /zabbix-data
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/alertscripts
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/externalscripts
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/export
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/modules
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/enc
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/ssh_keys
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/mibs
+[root@server-centos7 arif]# sudo mkdir /zabbix-data/snmptraps
+[root@server-centos7 arif]# sudo mkdir -p /zabbix-nginx/nginx
+[root@server-centos7 arif]# sudo mkdir /zabbix-nginx/modules
+[root@server-centos7 arif]# sudo mkdir /zabbix-mysql</pre>
+        </code>
+        <p>
+        Tetapkan izin yang tepat:</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# sudo chmod 777 -R /zabbix-data/
+[root@server-centos7 arif]# sudo chmod 777 -R /zabbix-nginx/
+[root@server-centos7 arif]# sudo chmod 777 /zabbix-mysql/</pre>
+        </code>
+        <p>Pada sistem berbasis Rhel, nonaktifkan SELinux atau atur dalam mode permisif seperti di bawah ini:</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# sudo sed -i 's/^SELINUX=.*/SELINUX=permissive/g' /etc/selinux/config
+          </pre>
+        </code>
+        <p>
+Next – Run Zabbix Server 6.0 LTS in Docker Containers
+Dalam panduan ini, kita akan menjalankan Zabbix dengan database MySQL, meskipun masih bisa dijalankan dengan PostgreSQL.
+Kami akan memiliki wadah berikut:</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# docker network create --subnet 172.20.0.0/16 --ip-range 172.20.240.0/20 zabbix-net
+[root@server-centos7 arif]# docker run --name mysql-server -t \
+      -e MYSQL_DATABASE="zabbixdb" \
+      -e MYSQL_USER="zabbix" \
+      -e MYSQL_PASSWORD="Password123" \
+      -e MYSQL_ROOT_PASSWORD="Password12345" \
+      --network=zabbix-net \
+      -d mysql:8.0 \
+      --character-set-server=utf8 --collation-server=utf8_bin \
+      --default-authentication-plugin=mysql_native_password
+
+[root@server-centos7 arif]# docker run --name zabbix-java-gateway -t \
+      --network=zabbix-net \
+      --restart unless-stopped \
+      -d zabbix/zabbix-java-gateway:alpine-6.0-latest
+
+[root@server-centos7 arif]# docker run --name zabbix-server-mysql -t \
+      -e DB_SERVER_HOST="mysql-server" \
+      -e MYSQL_DATABASE="zabbixdb" \
+      -e MYSQL_USER="zabbix" \
+      -e MYSQL_PASSWORD="Password123" \
+      -e MYSQL_ROOT_PASSWORD="Password12345" \
+      -e ZBX_JAVAGATEWAY="zabbix-java-gateway" \
+      --network=zabbix-net \
+      -p 10051:10051 \
+      --restart unless-stopped \
+      -d zabbix/zabbix-server-mysql:alpine-6.0-latest
+
+[root@server-centos7 arif]# docker run --name zabbix-web-nginx-mysql -t \
+      -e ZBX_SERVER_HOST="zabbix-server-mysql" \
+      -e DB_SERVER_HOST="mysql-server" \
+      -e MYSQL_DATABASE="zabbixdb" \
+      -e MYSQL_USER="zabbix" \
+      -e MYSQL_PASSWORD="Password123" \
+      -e MYSQL_ROOT_PASSWORD="Password12345" \
+      --network=zabbix-net \
+      -p 80:8080 \
+      --restart unless-stopped \
+      -d zabbix/zabbix-web-nginx-mysql:alpine-6.0-latest</pre>
+        </code>
+        <p>Check</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# docker ps
+CONTAINER ID   IMAGE                                             COMMAND                  CREATED          STATUS          PORTS                                             NAMES
+e0c725760e74   zabbix/zabbix-web-nginx-mysql:alpine-6.0-latest   "docker-entrypoint.sh"   58 seconds ago   Up 55 seconds   8443/tcp, 0.0.0.0:80->8080/tcp, :::80->8080/tcp   zabbix-web-nginx-mysql
+3d8320c32ea6   zabbix/zabbix-server-mysql:alpine-6.0-latest      "/sbin/tini -- /usr/…"   4 minutes ago    Up 4 minutes    0.0.0.0:10051->10051/tcp, :::10051->10051/tcp     zabbix-server-mysql
+cb186e90929c   zabbix/zabbix-java-gateway:alpine-6.0-latest      "docker-entrypoint.s…"   7 minutes ago    Up 7 minutes    10052/tcp                                         zabbix-java-gateway</pre>
+        </code>
+        <p>Download Docker Compose on Linux.</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# curl -s https://api.github.com/repos/docker/compose/releases/latest | grep browser_download_url  | grep docker-compose-linux-x86_64 | cut -d '"' -f 4 | wget -qi -
+          </pre>
+        </code>
+        <p>Jadikan biner dapat dieksekusi.</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# chmod +x docker-compose-linux-x86_64</pre>
+        </code>
+        <p>Pindahkan file ke PATH Anda.</p>
+        <code>
+          <pre>
+[root@server-centos7 arif]# sudo mv docker-compose-linux-x86_64 /usr/local/bin/docker-compose
+</pre>
+        </code>
+        <p>Verifikasi instalasi.</p>
+        <code>
+          <pre>
+[arif@server-centos7 ~]$ docker-compose version
+Docker Compose version v2.6.0
+          </pre>
+        </code>
+        <p>Buat file komposisi docker untuk container:</p>
+        <code>
+          <pre>[arif@server-centos7 ~]$ vi docker-compose.yml </pre>
+         </code>
+         <p>File akan berisi baris di bawah ini:</p>
+         <code>
+           <pre>
+version: '3.5'
+services:
+ mysql-server:
+  image: mysql:8.0
+  networks:
+   - zbx_net
+  command:
+   - mysqld
+   - --character-set-server=utf8
+   - --collation-server=utf8_bin
+   - --default-authentication-plugin=mysql_native_password
+  environment:
+   - MYSQL_USER=zabbix
+   - MYSQL_DATABASE=zabbixdb
+   - MYSQL_PASSWORD=Password12345
+   - MYSQL_ROOT_PASSWORD=Password123
+   - ZBX_JAVAGATEWAY=zabbix-java-gateway
+  volumes:
+   - /zabbix-mysql:/var/lib/mysql:rw
+ zabbix-server-mysql:
+  image: zabbix/zabbix-server-mysql:alpine-latest
+  networks:
+   - zbx_net
+  ports:
+   - 10051:10051
+  volumes:
+   - /etc/localtime:/etc/localtime:ro
+   - /etc/timezone:/etc/timezone:ro 
+   - /zabbix-data/alertscripts:/usr/lib/zabbix/alertscripts:ro
+   - /zabbix-data/externalscripts:/usr/lib/zabbix/externalscripts:ro
+   - /zabbix-data/export:/var/lib/zabbix/export:rw
+   - /zabbix-data/modules:/var/lib/zabbix/modules:ro
+   - /zabbix-data/enc:/var/lib/zabbix/enc:ro
+   - /zabbix-data/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+   - /zabbix-data/mibs:/var/lib/zabbix/mibs:ro
+   - /zabbix-data/snmptraps:/var/lib/zabbix/snmptraps:rw
+  environment:
+   - DB_SERVER_HOST=mysql-server
+   - MYSQL_DATABASE=zabbixdb
+   - MYSQL_USER=zabbix
+   - MYSQL_PASSWORD=Password12345
+   - MYSQL_ROOT_PASSWORD=Password123
+   - ZBX_JAVAGATEWAY=zabbix-java-gateway
+
+  depends_on:
+   - mysql-server
+
+ zabbix-web-nginx-mysql:
+  image: zabbix/zabbix-web-nginx-mysql:alpine-6.0-latest
+  networks:
+   - zbx_net
+  ports:
+   - 80:8080
+   - 443:8443
+  volumes:
+   - /etc/localtime:/etc/localtime:ro
+   - /etc/timezone:/etc/timezone:ro
+   - /zabbix-nginx/nginx:/etc/ssl/nginx:ro
+   - /zabbix-nginx/modules/:/usr/share/zabbix/modules/:ro
+  environment:
+   - ZBX_SERVER_HOST=zabbix-server-mysql
+   - DB_SERVER_HOST=mysql-server
+   - MYSQL_DATABASE=zabbixdb
+   - MYSQL_USER=zabbix
+   - MYSQL_PASSWORD=Password12345
+   - MYSQL_ROOT_PASSWORD=Password123
+  depends_on:
+   - mysql-server
+   - zabbix-server-mysql
+ zabbix-java-gateway:
+  image: zabbix/zabbix-java-gateway:alpine-6.0-latest
+  networks:
+   - zbx_net
+  ports:
+   - 10052:10052
+networks:
+ zbx_net:
+   driver: bridge
+           </pre>
+         </code>
+         <p>Hapus wadah saat ini:</p>
+         <code>
+           <pre>
+[arif@server-centos7 ~]$ sudo su
+[root@server-centos7 arif]# for i in mysql-server zabbix-java-gateway zabbix-server-mysql zabbix-web-nginx-mysql; do
+   docker rm -f $i
+ done</pre>
+         </code>
+         <p>COPY KAN FILE BINARRY NYA BIAR BISA DI JALAN KAN DENGAN SUDO</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# cp -Rf /usr/local/bin/docker-compose /bin/</pre>
+         </code>
+         <p>Verifikasi apakah wadah sedang berjalan:</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# docker-compose ps
+NAME                            COMMAND                  SERVICE                  STATUS              PORTS
+arif-mysql-server-1             "docker-entrypoint.s…"   mysql-server             running             33060/tcp
+arif-zabbix-java-gateway-1      "docker-entrypoint.s…"   zabbix-java-gateway      running             0.0.0.0:10052->10052/tcp, :::10052->10052/tcp
+arif-zabbix-server-mysql-1      "/sbin/tini -- /usr/…"   zabbix-server-mysql      running             0.0.0.0:10051->10051/tcp, :::10051->10051/tcp
+arif-zabbix-web-nginx-mysql-1   "docker-entrypoint.sh"   zabbix-web-nginx-mysql   running             0.0.0.0:80->8080/tcp, 0.0.0.0:443->8443/tcp, :::80->8080/tcp, :::443->8443/tcp</pre>
+         </code>
+         <p>INSTALL UFW</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# sudo yum install epel-release
+[root@server-centos7 arif]# yum install --enablerepo="epel" ufw
+[root@server-centos7 arif]# ufw --version
+ufw 0.35
+Copyright 2008-2015 Canonical Ltd.</pre>
+         </code>
+         <p>DI COBA DULU PAKAI INI DULU KALAU GA BISA PAKAI > UFW</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# systemctl start firewalld.service 
+[root@server-centos7 arif]# sudo firewall-cmd --permanent --add-port=10051/tcp
+[root@server-centos7 arif]# sudo firewall-cmd --permanent --add-port=80/tcp
+[root@server-centos7 arif]# sudo firewall-cmd --reload</pre>
+         </code>
+         <p>ATAU PAKAI INI</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# systemctl start ufw.service 
+[root@server-centos7 arif]# systemctl status ufw.service 
+[root@server-centos7 arif]# systemctl restart ufw.service 
+[root@server-centos7 arif]# systemctl enable ufw.service</pre>
+         </code>
+         <p>Anda harus mengizinkan layanan melalui firewall:</p>
+         <code>
+           <pre>
+[root@server-centos7 arif]# sudo ufw allow 80/tcp
+[root@server-centos7 arif]# sudo ufw allow 10051/tcp</pre>
+         </code>
+         <p>OPEN BROWSER > http://192.168.100.25</p>
+         <p>Masuk menggunakan kredensial default:</p>
+         <p>Username: Admin
+Password: zabbix</p>
+        <img src="img-selesai-install/2.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-selesai-install/4.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>
+Lanjutkan dan ubah kata sandi admin di bawah Administrasi > Pengguna > Admin > Kata Sandi > Ubah Kata Sandi
+JANGAN LUPA GANTI TIME ZONE NYA ASIA/JAKARTA, Sekalian Ganti Theme</p>
+        <img src="img-selesai-install/5.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Setelah kata sandi pilihan ditetapkan, klik perbarui</p>
+        <img src="img-selesai-install/6.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-selesai-install/7.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>
+Next – Konfigurasikan host Target Pemantauan Zabbix.
+Kami sekarang akan mengkonfigurasi server ini untuk pemantauan dengan menginstal paket agen Zabbix pada mesin klien. Paket agen Zabbix dapat diinstal seperti di bawah ini:
+SEBELUM INSTALL CHECK DULU VERSION TERBARU NYA DI > https://repo.zabbix.com/zabbix/6.0/debian/pool/main/z/zabbix-release/
+DI SERVER CLIENT > DEBIAN SERVER 11</p>
+        <p>KALO TIDAK CONNECT MASUKAN nameserrver 192.168.100.1</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# vi /etc/resolv.conf 
+nameserver 192.168.100.1</pre>
+        </code>
+        <code>
+          <pre>
+root@server-debian11:/mnt/data# cd /usr/local/src/</pre>
+        </code>
+        <p>KALO PAKAI YANG TERBARU REPOSITORY NYA, KALO TIDAK ADA PACKAGE NYA!</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# wget https://repo.zabbix.com/zabbix/6.1/debian/pool/main/z/zabbix-release/zabbix-release_6.1-2+debian10_all.deb
+root@server-debian11:/usr/local/src# ls
+zabbix-release_6.0-1+debian11_all.deb
+root@server-debian11:/usr/local/src# dpkg -i zabbix-release_6.1-2+debian10_all.deb 
+root@server-debian11:/usr/local/src# sudo apt update
+root@server-debian11:/usr/local/src# sudo apt install zabbix-agent zabbix-sender</pre>
+        </code>
+        <p>Setelah terinstal, buat konfigurasi di bawah ini.</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# vi /etc/zabbix/zabbix_agentd.conf</pre>
+        </code>
+        <p>
+MASUKAN IP SERVER ZABBIX 192.168.100.25 
+Edit file seperti di bawah ini:</p>
+        <code>
+          <pre>
+# On line 117 - Specify Zabbix server IP Address
+Server=192.168.100.25
+
+# On line 158 - Specify Zabbix server ( For active checks)
+ServerActive=192.168.100.25
+
+# On line 169 - Set hostname of the Zabbix agent
+Hostname=agent1.browtesting</pre>
+        </code>
+        <p>
+Mulai dan aktifkan layanan:</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# sudo systemctl start zabbix-agent
+root@server-debian11:/usr/local/src# sudo systemctl restart zabbix-agent
+root@server-debian11:/usr/local/src# sudo systemctl enable zabbix-agent</pre>
+        </code>
+        <p>
+Anda juga perlu mengizinkan port melalui firewall:
+INSTALL DULU FIREWALL NYA</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# sudo apt -y install firewalld
+root@server-debian11:/usr/local/src# apt policy firewalld
+root@server-debian11:/usr/local/src# sudo firewall-cmd --state
+root@server-debian11:/usr/local/src# sudo ufw disable</pre>
+        </code>
+        <p>Check</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# sudo firewall-cmd --list-all
+public
+  target: default
+  icmp-block-inversion: no
+  interfaces: 
+  sources: 
+  services: dhcpv6-client ssh
+  ports: 
+  protocols: 
+  forward: no
+  masquerade: no
+  forward-ports: 
+  source-ports: 
+  icmp-blocks: 
+  rich rules: 
+
+root@server-debian11:/usr/local/src# sudo firewall-cmd --get-services
+root@server-debian11:/usr/local/src# sudo firewall-cmd --permanent --add-port=10050/tcp
+root@server-debian11:/usr/local/src# sudo firewall-cmd --reload</pre>
+        </code>
+        <p>NEXT PINDAH KE SERVER ZABBIX 
+Tambahkan Agen Zabbix ke Server Zabbix
+Agen Zabbix sekarang dapat ditambahkan ke server dengan menavigasi ke Konfigurasi > Host > Buat host.</p>
+        <p> Anda diminta untuk menyediakan:</p>
+        <p> > Nama host agen Zabbix yang akan dipantau harus sesuai dengan yang dimasukkan dalam file konfigurasi agen.</p>
+        <p> > Nama yang terlihat untuk agen Zabbix.</p>
+        <p> > Pilih grup atau tambahkan grup baru dari bidang "Grup".</p>
+        <p> > Alamat IP agen Zabbix</p>
+        <p> > Port layanan agen Zabbix, port default adalah 10050</p>
+        <p> > Isi data-datanya seperti gambar di bawah ini:</p>
+        <p> > SAMAKAN SEPERTI FILE CONFIGURASI TADI DI ATAS !! </p>
+        <p> > IP 192.168.100.79 ITU IP SERVER CLIENT > DEBIAN SERVER 11 </p>
+        <img src="img-monitoring-server-debian11/8.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-monitoring-server-debian11/9.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-monitoring-server-debian11/10.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>
+Ingatlah untuk menambahkan template pemantauan tergantung pada apa yang ingin Anda pantau pada agen: Kemudian klik tambahkan untuk menambahkan agen. Setelah ditambahkan, agen akan tersedia seperti di bawah ini:</p>
+        <img src="img-monitoring-server-debian11/11.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>
+Setelah ditambahkan, navigasikan ke Monitoring > Hosts dan pilih host yang diinginkan untuk dipantau. Kemudian pilih grafik untuk melihat data.</p>
+        <p>KALO TIDAK CONNECT KE SERVER CLIENT COBA RESTART LAGI</p>
+        <p>Check</p>
+        <code>
+          <pre>
+root@server-debian11:/usr/local/src# sudo firewall-cmd --permanent --add-port=10050/tcp
+root@server-debian11:/usr/local/src# sudo firewall-cmd --reload
+root@server-debian11:/usr/local/src# sudo systemctl start zabbix-agent
+root@server-debian11:/usr/local/src# sudo systemctl restart zabbix-agent
+root@server-debian11:/usr/local/src# sudo systemctl enable zabbix-agent</pre>
+        <img src="img-monitoring-server-debian11/12.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-monitoring-server-debian11/13.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <img src="img-monitoring-server-debian11/14.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Menambahkan Template</p>
+        <img src="img-monitoring-server-debian11/15.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Tampilan Graphs</p>
+        <img src="img-monitoring-server-debian11/16.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        </code>
+      </section>
+
+      <section class="main-section" id="Installation_Snort">
+        <header>IDS and IPS</header>
+        <p>
+          What is Snort? Snort is the foremost Open Source Intrusion Prevention System (IPS) in the world. Snort IPS uses a series of rules that help define malicious network activity and uses those rules to find packets that match against
+          them and generates alerts for users. Snort can be deployed inline to stop these packets, as well. Snort has three primary uses: As a packet sniffer like tcpdump, as a packet logger — which is useful for network traffic debugging,
+          or it can be used as a full-blown network intrusion prevention system. Snort can be downloaded and configured for personal and business use alike.
+        </p>
+
+        <p>
+          What are my options for buying and using Snort? Once downloaded and configured, Snort rules are distributed in two sets: The “Community Ruleset” and the “Snort Subscriber Ruleset.” The Snort Subscriber Ruleset is developed,
+          tested, and approved by Cisco Talos. Subscribers to the Snort Subscriber Ruleset will receive the ruleset in real-time as they are released to Cisco customers. You can download the rules and deploy them in your network through the
+          Snort.org website. The Community Ruleset is developed by the Snort community and QAed by Cisco Talos. It is freely available to all users.
+        </p>
+
+        <p>For more information about Snort Subscriber Rulesets available for purchase, please visit the Snort product page.</p>
+        <header>Install Snort Dan Cara Menulis Rules</header>
+        <p>Find the appropriate package for your operating system and install.</p>
+        <p>Siapkan Aplikasi Pendukung.</p>
+        <code>
+          <pre>
+root@server-IDS-IPS:~# sudo locale-gen id_ID.UTF-8
+root@server-IDS-IPS:~# sudo apt-get update</pre
+          >
+        </code>
+
+        <p>ifconfig dulu cek interface dan IP nya, Lalu Install</p>
+        <code>
+          <pre>root@server-IDS-IPS:~# apt-get install oinkmaster snort snort-common snort-rules-default snort-doc</pre>
+        </code>
+
+        <p>Akan Di Tanya interface yang akan di monitor, misalnya: enp0s3 range IP yang di monitor, misalnya: 192.168.100.0/24</p>
+
+        <p>Cek Snort</p>
+        <code>
+          <pre> root@server-IDS-IPS:~# snort -C </pre>
+        </code>
+
+        <p>Jalankan Snort mode NIDS</p>
+        <code>
+          <pre> root@server-IDS-IPS:~# snort -dev -l /var/log/snort/ -h 192.168.0.0/24 -c /etc/snort/snort.conf &</pre>
+        </code>
+
+        <p>Ingin supaya bisa di baca di kemudian hari oleh wireshark harus di simpan dalam bentuk binary, dengan perintah</p>
+        <code>
+          <pre>/usr/sbin/snort -m 027 -b -l /var/log/snort/ -u arif -c /etc/snort/snort.conf -S HOME_NET=[192.168.100.0/24] -i wlp2s0 &</pre>
+        </code>
+
+        <p>Biar tidak rewel, sebaiknya permission /var/log/snort di jadikan</p>
+        <code>
+          <pre>chmod 770 /var/log/snort</pre>
+        </code>
+        <p>Ini sebetulnya cara yang tidak baik!!! PAKE YANG BAWAH AJA BUAT JALANKAN SNORT NYA</p>
+        <p>Menjalankan Snort mode NIDS, log text</p>
+        <p>log /var/log/snort bisa di baca oleh manusia, kita bisa menjalankan snort dengan perintah,</p>
+        <code>
+          <pre>root@server-IDS-IPS:~# snort -c /etc/snort/snort.conf -l /var/log/snort/ -K ascii -D</pre>
+        </code>
+        <p>Check Snort</p>
+        <code>
+          <pre>root@server:/home/arif# ps ax | grep snort</pre>
+        </code>
+
+        <p>Kalo Kill Snort</p>
+        <code>
+          <pre>
+root@server:/var/log/snort# killall snort
+root@server:/var/log/snort# ps ax | grep snort
+7444 pts/0    S+     0:00 grep --color=auto snort</pre
+          >
+        </code>
+
+        <p>Check</p>
+        <code>
+          <pre>
+root@server:/etc/snort# vi snort.conf  
+root@server:/etc/snort# vi classification.config</pre
+          >
+        </code>
+
+        <p>KALO 1 ARTI NYA KAYA LAMPU LALU LINTAS AJA WARNA MERAH BAHAYA</p>
+        <p>KALO 2 ARTI NYA KAYA LAMPU LALU LINTAS AJA KUNING WARNING</p>
+        <p>KALO 3 ARTINYA KAYA LAMPU LALU LINTAS AJA IJO AMAN</p>
+        <code>
+          <pre>classification: trojan-activity,A Network Trojan was detected, 1</pre>
+          <pre>
+root@server:/etc/snort# cd rules/
+root@server:/etc/snort/rules# more community-oracle.rules</pre
+          >
+        </code>
+
+        <p>Yang Penting Kata-Kata content:</p>
+        <p>Menjalankan Snort mode NIDS, log text</p>
+        <p>Agar log /var/log/snort bisa di baca oleh manusia, kita bisa menjalankan snort dengan perintah,</p>
+        <code>
+          <pre>
+root@server:/var/log/snort# snort -c /etc/snort/snort.conf -l /var/log/snort/ -K ascii -D
+root@server:/var/log/snort# watch -n 3 tail /var/log/snort/alert</pre
+          >
+        </code>
+
+        <p>Sebagai Contoh Kalo Kita Scan Nmap AKAN keluar</p>
+        <p>nmap -v -sS -O 192.168.100.21</p>
+        <code>
+          <pre>
+      [**] [1:1228:7] SCAN nmap XMAS [**]
+      [Classification: Attempted Information Leak] [Priority: 2]
+      09/25-17:36:04.058342 192.168.100.122:63434 -> 192.168.100.21:1
+      TCP TTL:55 TOS:0x0 ID:16877 IpLen:20 DgmLen:60</pre
+          >
+        </code>
+
+        <p>Kalo Untuk Buat Snort Rules Harus Ngerti Regex</p>
+        <p>Kalo Mau Nyadap Paket Yang Lewat Dan Kita Kasih REGEX Supaya Kita Extrak Ini Mahkluk Apa Si Kira-Kira Ke Gitu Nyadap Seperti Kayak WIRESHARK Kalo Ini Nyadap Versi CLI TCPDUMP</p>
+        <code>
+          <pre>root@server:/var/log/snort# snort -C</pre>
+        </code>
+
+        <p>Membuat Rules Sederhana</p>
+        <code>
+          <pre>
+root@server:/var/log/snort# cd /etc/snort/rules/
+root@server:/etc/snort/rules# vi local.rules</pre
+          >
+        </code>
+
+        <p>Seperti Ini Tuliskan Dan Save</p>
+        <code>
+          <pre>alert tcp any any -> 192.168.100.21 22 (msg: "Ada Yang Connect SSH Ke Mesin!!"; sid:1000001;)</pre>
+        </code>
+
+        <p>Kill Dulu</p>
+        <code>
+          <pre>root@server:/etc/snort/rules# killall snort</pre>
+        </code>
+
+        <p>Kita remove dulu biar bersih log nya</p>
+        <code>
+          <pre>
+root@server:/etc/snort/rules# cd /var/log/snort/
+root@server:/var/log/snort# rm -Rf *</pre
+          >
+        </code>
+
+        <p>Jalan Kan Lagi</p>
+        <code>
+          <pre>root@server:/etc/snort/rules# snort -c /etc/snort/snort.conf -l /var/log/snort/ -K ascii -D</pre>
+        </code>
+
+        <p>Cek Pake Ps Ax (Liat Software Jalan Di Belakang Layar) Dan Pakai wacth</p>
+        <code>
+          <pre>
+root@server:/etc/snort/rules# ps ax
+root@server:/var/log/snort# watch -n 3 tail /var/log/snort/alert</pre
+          >
+        </code>
+
+        <p>Kita Coba SSH Ke Server</p>
+
+        <p>Akan Keluar</p>
+        <code>
+          <pre>
+      [**] [1:1000001:0] Ada Yang Connect SSH Ke Mesin!! [**]
+      [Priority: 0]
+      09/25-18:32:00.622198 192.168.100.79:51814 -> 192.168.100.21:3000</pre
+          >
+        </code>
+
+        <p>Bisa Cek Ke</p>
+        <code>
+          <pre>root@server:/var/log/snort# vi alert</pre>
+        </code>
+      </section>
+
+      <section class="main-section" id="Installation_Snowl_Snort_GUI">
+        <header>Snowl - Snort Gui</header>
+        <p>
+          What is Snowl? Snowl is a modern web-based GUI (graphical user interface) for snort. Snort is an open source IDS/IPS (intrusion detection/prevention system). It is command-line tool and has not own graphical interface. Therefore,
+          we decided to create Snowl so that the snort setting became automatic and understandable, and the analysis of threats was as convenient as possible.
+        </p>
+        <header>Instalation</header>
+        <p>Please choose your operating system to view the installation guide i use ubuntu.</p>
+        <p>1 MENDAPATKAN HAK ISTIMEWA PENGGUNA SUPER (ROOT)</p>
+        <p>Instalasi Snort dan Snowl di Ubuntu membutuhkan hak superuser (root). Cara paling sederhana adalah mendapatkan terminal dengan hak akses root menggunakan perintah su (kata sandi pengguna root harus dimasukkan):</p>
+        <code>
+          <pre>
+arif@Testing:~$ ssh arif@192.168.100.127
+arif@server-IDS-IPS:~$ sudo su
+arif@server-IDS-IPS:~# sudo apt-get update</pre
+          >
+        </code>
+        <p>2 SNOWL AUTOMATIC INSTALLATION SCRIPT</p>
+        <p>Semua langkah yang diperlukan untuk menginstal Snort, Snowl, yang dijelaskan di bawah ini disatukan menjadi skrip, Anda dapat mengunduh dan menjalankannya menggunakan perintah berikut:</p>
+        <p>Biasa Nya Saya Simpan Hasil Download Nya Disini</p>
+        <code>
+          <pre>
+root@server-IDS-IPS:/home/arif# cd /usr/local/src/
+root@server-IDS-IPS:/usr/local/src# wget https://snowl.io/download/snowl-install-ubuntu.sh && bash ./snowl-install-ubuntu.sh</pre
+          >
+        </code>
+        <p>Skrip akan melakukan langkah-langkah yang dijelaskan di bawah dengan persetujuan otomatis ke varian yang direkomendasikan.</p>
+        <p>Hanya dua pertanyaan yang akan diajukan:</p>
+        <p>KETIK yes</p>
+        <code>
+          <pre>
+            Install Snowl? (yes/no, default yes): yes</pre>
+        </code>
+        <p>AKAN DI TANYA LAGI KETIK yes</p>
+        <code>
+          <pre>
+Now you can see snowl at address http://<HOST_IP>:5500
+Сongratulations, the Snowl is successfully installed
+Install Snowl-sensor? (yes/no, default yes): yes</pre>
+        </code>
+        <p>VERIFIKASI INSTALASI</p>
+        <p>Untuk memverifikasi kebenaran pemasangan, buka browser (disarankan Google Chrome atau Mozilla Firefox) dan ketik yang berikut di bilah alamat:</p>
+        <code>
+          <pre>
+http://192.168.100.127:5500/</pre>
+        </code>
+        <img src="img-snowl-snort/1.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>di mana [alamat IP] – sesuai dengan alamat IP server tempat SNOWL diinstal.</p>
+        <p>Anda akan melihat halaman login antarmuka Snowl. (Pengingat: Secara default, nama pengguna dan kata sandi Anda masing-masing sama dengan admin dan 123456. Kami</p>
+        <p>Tampilan Dasboard Masih Kosong</p>
+        <img src="img-snowl-snort/2.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>INSTALLATION OF SNOWL SENSOR</p>
+        <p>INSTALL SNORT DI SERVER YANG AKAN DI MONITOR</p>
+        <p>Jika Anda sudah menginstal dan menjalankan Snort, pastikan Anda menggunakan versi stabil terbaru</p>
+        <p>Untuk menginstal Snort dari repositori snowl/snort, jalankan perintah berikut:</p>
+        <code>
+          <pre>
+root@server-ubuntu:/home/arif# add-apt-repository ppa:snowl/snUntuk menginstal Snort dari repositori snowl/snort, jalankan perintah berikut:ort
+root@server-ubunu:/home/arif# apt update
+root@server-ubuntu:/home/arif# apt install -y snort</pre>
+          </code>
+          <p>Sebaiknya nonaktifkan autorun dengan perintah Snort yang dijelaskan di bawah ini. Snowl akan mengontrol mulai dan berhenti</p>
+          <code>
+            <pre>
+root@server-ubuntu:/home/arif# systemctl stop snort</pre>
+            </code>
+            <p>Untuk memasang sensor Snowl, jalankan:</p>
+            <code>
+              <pre>
+wget https://snowl.io/download/snowl-sensor_1.7.2_amd64.deb && dpkg -i ./snowl-sensor_1.7.2_amd64.deb</pre>
+              </code>
+        <p>Kemudian, Anda perlu mengatur hak untuk pengoperasian sensor Snowl dengan Snort (mulai/berhenti). Untuk tujuan ini, jalankan:</p>
+        <code>
+          <pre>
+root@server-ubuntu:/home/arif# /opt/snowl-sensor/snowl-snort fix
+Success</pre>
+          </code>
+          <P>Configuration</P>
+          <P>Masukan Rule Nya Yang Sudah Tersedia</P>
+          <img src="img-snowl-snort/3.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+          <p>Server Yang Akan Di Monitor</p>
+          <img src="img-snowl-snort/4.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+          <p>START</p>
+          <img src="img-snowl-snort/5.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        </section>
+
+      <section class="main-sections" id="Installation_Rkhunter">
+        <header>Rkhunter</header>
+        <p>
+          One potential concern is rootkits. Rootkits are software secretly installed by malicious intruders that allow those users to resume access to servers after security is breached. This is a very dangerous problem, because even after
+          the vector entry that the user originally used to gain permanent access, they can continue to log into the server using the rootkit they installed. One tool that can help you protect your system from problems like this is
+          rkhunter. This software checks your system against a database of known rootkits. Also, it can check other system files to make sure they match the expected properties and values.
+        </p>
+        <header>Install RKHunter Dan Cara Menggunakan</header>
+        <p>Please choose your operating system to view the installation guide i use ubuntu.</p>
+
+        <p>Compile RKHunter</p>
+        <p>INSTALL APLIKASI PENDUKUNG</p>
+        <code>
+          <pre>
+root@server-IDS-IPS:/usr/local/src# sudo locale-gen id_ID.UTF-8
+root@server-IDS-IPS:/usr/local/src# sudo apt-get update
+root@server-IDS-IPS:/usr/local/src# sudo apt-get -y install binutils libreadline5 libruby ruby ssl-cert unhide.rb mailutils</pre
+          >
+        </code>
+
+        <p>MASUKAN</p>
+        <code>
+          <pre>
+- Site localhost
+- Relay Site kalau pakai INDIHOME : smtp.telkom.net</pre
+          >
+        </code>
+
+        <p>Sebelum Download Check Versi Terakhir</p>
+        <code>
+          <pre>
+cd /usr/local/src/
+root@server-IDS-IPS:/usr/local/src# wget http://downloads.sourceforge.net/project/rkhunter/rkhunter/1.4.6/rkhunter-1.4.6.tar.gz
+root@server-IDS-IPS:/usr/local/src# tar xzvf rkhunter-1.4.6.tar.gz*
+root@server-IDS-IPS:/usr/local/src# cd rkhunter-1.4.6*</pre
+          >
+        </code>
+
+        <p>Install Di /usr</p>
+        <code>
+          <pre>
+root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# ./installer.sh --layout /usr --install
+root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter --versioncheck</pre
+          >
+        </code>
+
+        <p>OUTPUT</p>
+        <code>
+          <pre>
+[ Rootkit Hunter version 1.4.6 ]
+Checking rkhunter version...
+This version  : 1.4.6
+Latest version: 1.4.6</pre
+          >
+        </code>
+
+        <p>UPDATE DATA FILE</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter --update</pre>
+        </code>
+
+        <p>Set properties update / baseline</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter --propupd</pre>
+        </code>
+        <p>OUTPUT</p>
+        <code>
+          <pre>
+[ Rootkit Hunter version 1.4.6 ]
+File created: searched for 180 files, found 139</pre
+          >
+        </code>
+
+        <p>Jalankan</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter -c --enable all --disable none</pre>
+        </code>
+        <p>Dia akan menjalan test per section.</p>
+        <p>Log bisa di lihat di</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# nano /var/log/rkhunter.log</pre>
+        </code>
+
+        <p>Atau Pake Ini</p>
+        <code>
+          <pre>
+root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# cat /var/log/rkhunter.log | grep warning
+[21:18:08] Info: No mail-on-warning address configured</pre
+          >
+        </code>
+        <p>Alternative lain, perintahkan rkhunter untuk print warning ke layar</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter -c --enable all --disable none --rwo</pre>
+        </code>
+        <p>Tuning Konfigurasi RKHunter supaya lebih baik</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# vi /etc/rkhunter.conf</pre>
+        </code>
+
+        <p>Notifikasi email</p>
+        <code>
+          <pre>
+MAIL-ON-WARNING="your_user@domain.com"
+MAIL_CMD=mail -s "[rkhunter] Warnings found for ${HOST_NAME}"</pre
+          >
+        </code>
+
+        <p>Atau</p>
+        <code>
+          <pre>
+MAIL-ON-WARNING="root@localhost"
+MAIL_CMD=mail -s "[rkhunter] Warnings found for ${HOST_NAME}"</pre
+          >
+        </code>
+
+        <p>Ijinkan Root Ssh Login, CONTOH</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# ALLOW_SSH_ROOT_USER=without-password</pre>
+        </code>
+
+        <p>Check</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter -C</pre>
+        </code>
+        <p>TEST LAGI APAKAH ADA WARNING</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter -c --enable all --disable none --rwo</pre>
+        </code>
+        <p>Harusnya ada minimal 1 warning, karena konfigurasi rkhunter sudah di ubah,</p>
+
+        <p>Update profile rkhunter</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# rkhunter --propupd</pre>
+        </code>
+        <p>Cek email untuk notifkasi dari rkhunter</p>
+
+        <p>Cron</p>
+        <code>
+          <pre>root@server-IDS-IPS:/usr/local/src/rkhunter-1.4.6# crontab -e</pre>
+        </code>
+        <p>KALAU TIDAK ADA MASALAH, MAKA TIDAK ADA EMAIL YANG AKAN DIKIRIM</p>
+      </section>
+
+      <section class="main-section" id="Installation_Nagios">
+        <header>NaGIOS</header>
+        <p>
+          Nagios is a popular open-source monitoring system. Nagios maintains an inventory of your servers and monitors them so you know your critical services are up and running. Using a monitoring system like Nagios is an essential tool
+          for any production environment, because by monitoring uptime, CPU usage, or disk space, you can prevent problems before they occur, or before your users contact you. Here we will install Nagios 4 and configure it so that we can
+          monitor host resources on the Nagios web interface. We will also setup the Nagios Remote Plugin Executor (NRPE), which will run as the remote host agent so that we can monitor its resources.
+        </p>
+
+        <header>Need</header>
+        <ul>
+          <li>Two Ubuntu 20.04 servers with root user privige. Firewall with ufw.</li>
+          <li>Servers with Nagios will be called Nagios servers.</li>
+          <li>Servers without Nagios will be called Ubuntu servers.</li>
+          <li>Nagios Server will run Apache and PHP.</li>
+          <li>Nagios Server is usually run behind a Firewall or VPN. If you run it on a Public IP, you have to be more serious about installing TLS/SSL etc. This tutorial assumes, Nagios server is behind Firewall.</li>
+        </ul>
+        <header>Installation Nagios 4 dan Memantau Server di Ubuntu 20.04</header>
+        <p>Dua VPCS Ubuntu 20.04 satu untuk server Nagios dan satu untuk klien Nagios.</p>
+        <p>Akses ke akun pengguna root (atau akses ke akun admin dengan hak akses root.</p>
+        <p>Biasa Nya Saya Sebelum Install NaGIOS Ubah Nama Server Dulu Menjadi server-nagios lalu reboot server nya</p>
+        <code>
+          <pre>
+arif@server-ubuntu:~$ sudo vim /etc/hostname 
+server-nagios</pre
+          >
+        </code>
+        <p>Langkah 1: Masuk ke Server & Perbarui Paket OS Server</p>
+        <code>
+          <pre>arif@server-nagios:~$ sudo apt-get update</pre>
+        </code>
+        <p>Langkah 2: Instal Dependensi yang Diperlukan</p>
+        <p>Sebelum memulai, Kita perlu menginstal beberapa dependensi yang diperlukan untuk menginstal Nagios di sistem Anda. Anda dapat menginstal semuanya dengan perintah berikut:</p>
+        <code>
+          <pre>
+arif@server-nagios:~$ sudo apt-get install autoconf bc gawk dc build-essential gcc libc6 make wget unzip apache2 php 
+libapache2-mod-php libgd-dev libmcrypt-dev make libssl-dev snmp libnet-snmp-perl gettext -y</pre
+          >
+        </code>
+        <p>Setelah semua dependensi diinstal, Anda dapat melanjutkan untuk mengunduh inti Nagios 4.</p>
+        <p>Langkah 3: Unduh dan Instal Nagios 4</p>
+        <p>Pertama, unduh versi terbaru Nagios 4 dari situs resminya menggunakan perintah berikut:</p>
+        <code>
+          <pre>
+arif@server-nagios:~$ wget https://assets.nagios.com/downloads/nagioscore/releases/nagios-4.4.6.tar.gz
+arif@server-nagios:~$ ls
+nagios-4.4.6.tar.gz</pre
+          >
+        </code>
+        <p>Setelah unduhan selesai, ekstrak file yang diunduh dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~$ tar -xvzf nagios-4.4.6.tar.gz </pre>
+        </code>
+        <p>Selanjutnya, ubah direktori ke direktori yang diekstraksi dan konfigurasikan dengan perintah berikut:</p>
+        <code>
+          <pre>
+arif@server-nagios:~$ cd nagios-4.4.6/
+arif@server-nagios:~/nagios-4.4.6$ ./configure --with-httpd-conf=/etc/apache2/sites-enabled</pre
+          >
+        </code>
+        <p>Kita harus mendapatkan output berikut:</p>
+        <code>
+          <pre>
+*** Configuration summary for nagios 4.4.6 2020-04-28 ***:
+
+General Options:
+-------------------------
+        Nagios executable:  nagios
+        Nagios user/group:  nagios,nagios
+      Command user/group:  nagios,nagios
+            Event Broker:  yes
+        Install ${prefix}:  /usr/local/nagios
+    Install ${includedir}:  /usr/local/nagios/include/nagios
+                Lock file:  /run/nagios.lock
+  Check result directory:  /usr/local/nagios/var/spool/checkresults
+          Init directory:  /lib/systemd/system
+  Apache conf.d directory:  /etc/apache2/sites-enabled
+            Mail program:  /bin/mail
+                  Host OS:  linux-gnu
+          IOBroker Method:  epoll
+
+Web Interface Options:
+------------------------
+                HTML URL:  http://localhost/nagios/
+                  CGI URL:  http://localhost/nagios/cgi-bin/
+Traceroute (used by WAP):  
+
+
+Review the options above for accuracy.  If they look okay,
+type 'make all' to compile the main program and CGIs.</pre
+          >
+        </code>
+        <p>Selanjutnya, buat nagios dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ make all</pre>
+        </code>
+        <p>Selanjutnya, buat pengguna dan grup Nagios dan tambahkan ke grup www-data dengan perintah berikut:</p>
+        <code>
+          <pre>
+arif@server-nagios:~/nagios-4.4.6$ sudo make install-groups-users 
+arif@server-nagios:~/nagios-4.4.6$ sudo usermod -a -G nagios www-data</pre
+          >
+        </code>
+        <p>Selanjutnya, jalankan perintah berikut untuk menginstal binari Nagios, daemon dan mode perintah:</p>
+        <code>
+          <pre>
+arif@server-nagios:~/nagios-4.4.6$ sudo make install 
+arif@server-nagios:~/nagios-4.4.6$ sudo make install-daemoninit 
+arif@server-nagios:~/nagios-4.4.6$ sudo make install-commandmode</pre
+          >
+        </code>
+        <p>Selanjutnya, instal contoh konfigurasi skrip dan konfigurasi web Apache menggunakan perintah berikut:</p>
+        <code>
+          <pre>
+arif@server-nagios:~/nagios-4.4.6$ sudo make install-config 
+arif@server-nagios:~/nagios-4.4.6$ sudo make install-webconf</pre
+          >
+        </code>
+        <p>Selanjutnya, aktifkan modul rewrite dan cgi dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo a2enmod rewrite cgi</pre>
+        </code>
+        <p>Selanjutnya, restart layanan Apache untuk menerapkan perubahan:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo systemctl restart apache2</pre>
+        </code>
+        <p>Langkah 4: Buat Pengguna Admin Nagios</p>
+        <p>Selanjutnya, Kita perlu membuat pengguna Nagios untuk mengakses antarmuka web Nagios. Kita dapat membuatnya dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin</pre>
+        </code>
+        <p>Kita akan diminta untuk mengatur kata sandi seperti yang ditunjukkan di bawah ini:</p>
+        <code>
+          <pre>
+New password: 
+Re-type new password: 
+Adding password for user arifadmin</pre
+          >
+        </code>
+        <p>Langkah 5: Konfigurasikan Nagios</p>
+        <p>Sebelum mengonfigurasi Nagios, Kita harus menginstal Plugin Nagios dan Plugin NRPE. Kita dapat menginstalnya dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo apt-get install monitoring-plugins nagios-nrpe-plugin -y</pre>
+        </code>
+        <p>Setelah semua paket diinstal, buat direktori untuk menyimpan semua konfigurasi:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo mkdir -p /usr/local/nagios/etc/servers</pre>
+        </code>
+        <p>Selanjutnya, edit file konfigurasi Nagios dan tentukan direktori server:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo vim /usr/local/nagios/etc/nagios.cfg </pre>
+        </code>
+        <p>Buang Pagar nya #</p>
+        <p>Ubah baris berikut:</p>
+        <code>
+          <pre>cfg_dir=/usr/local/nagios/etc/servers</pre>
+        </code>
+        <p>Selanjutnya, edit Nagios resource.cfg dan tentukan jalur plugin Nagios:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo vim /usr/local/nagios/etc/resource.cfg </pre>
+        </code>
+        <p>Yang ini kasih pagar -> #$USER1$=/usr/local/nagios/libexec</p>
+        <p>Ubah baris berikut:</p>
+        <code>
+          <pre>$USER1$=/usr/lib/nagios/plugins</pre>
+        </code>
+        <p>Simpan dan tutup file kemudian edit contacts.cfg dan tentukan nama kontak dan alamat email Anda:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo vim /usr/local/nagios/etc/objects/contacts.cfg </pre>
+        </code>
+        <p>Ubah baris berikut sesuai kebutuhan Anda:</p>
+        <code>
+          <pre>
+define contact {
+
+contact_name            nagiosadmin             ; Short name of user
+use                     generic-contact         ; Inherit default values from generic-contact template (defined above)
+alias                   Nagios Admin            ; Full name of user
+email                   marifrizki27@gmail.com ; <<***** CHANGE THIS TO YOUR EMAIL ADDRESS ******
+}</pre
+          >
+        </code>
+        <p>Simpan dan tutup file kemudian edit command.cfg dan tentukan perintah nrpe check:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo vim /usr/local/nagios/etc/objects/commands.cfg</pre>
+        </code>
+        <p>Tambahkan baris berikut di akhir file:</p>
+        <code>
+          <pre>
+define command{
+command_name check_nrpe
+command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$
+}</pre
+          >
+        </code>
+        <p>Simpan dan tutup file kemudian mulai layanan Nagios dan aktifkan untuk memulai saat reboot sistem:</p>
+        <code>
+          <pre>
+arif@server-nagios:~/nagios-4.4.6$ sudo systemctl start nagios
+arif@server-nagios:~/nagios-4.4.6$ sudo systemctl enable nagios</pre
+          >
+        </code>
+        <p>Kita juga dapat memverifikasi status layanan Nagios dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo systemctl status nagios</pre>
+        </code>
+        <p>Output</p>
+        <code>
+          <pre>
+● nagios.service - Nagios Core 4.4.6
+     Loaded: loaded (/lib/systemd/system/nagios.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sat 2022-03-26 22:21:00 UTC; 1min 12s ago
+       Docs: https://www.nagios.org/documentation
+    Process: 52032 ExecStartPre=/usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg (co>
+    Process: 52038 ExecStart=/usr/local/nagios/bin/nagios -d /usr/local/nagios/etc/nagios.cfg (code=>
+   Main PID: 52040 (nagios)
+      Tasks: 6 (limit: 1073)
+     Memory: 2.8M
+     CGroup: /system.slice/nagios.service
+             ├─52040 /usr/local/nagios/bin/nagios -d /usr/local/nagios/etc/nagios.cfg
+             ├─52041 /usr/local/nagios/bin/nagios --worker /usr/local/nagios/var/rw/nagios.qh
+             ├─52042 /usr/local/nagios/bin/nagios --worker /usr/local/nagios/var/rw/nagios.qh
+             ├─52043 /usr/local/nagios/bin/nagios --worker /usr/local/nagios/var/rw/nagios.qh
+             ├─52044 /usr/local/nagios/bin/nagios --worker /usr/local/nagios/var/rw/nagios.qh
+             └─52048 /usr/local/nagios/bin/nagios -d /usr/local/nagios/etc/nagios.cfg
+
+Mar 26 22:21:00 server-nagios nagios[52040]: qh: Socket '/usr/local/nagios/var/rw/nagios.qh' success>
+Mar 26 22:21:00 server-nagios nagios[52040]: qh: core query handler registered
+Mar 26 22:21:00 server-nagios nagios[52040]: qh: echo service query handler registered
+Mar 26 22:21:00 server-nagios nagios[52040]: qh: help for the query handler registered
+Mar 26 22:21:00 server-nagios nagios[52040]: wproc: Successfully registered manager as @wproc with q>
+Mar 26 22:21:00 server-nagios nagios[52040]: wproc: Registry request: name=Core Worker 52041;pid=520>
+Mar 26 22:21:00 server-nagios nagios[52040]: wproc: Registry request: name=Core Worker 52042;pid=520>
+Mar 26 22:21:00 server-nagios nagios[52040]: wproc: Registry request: name=Core Worker 52044;pid=520>
+Mar 26 22:21:00 server-nagios nagios[52040]: wproc: Registry request: name=Core Worker 52043;pid=520>
+Mar 26 22:21:02 server-nagios nagios[52040]: Successfully launched command file worker with pid 52048
+          </pre>
+        </code>
+        <p>Terakhir, restart layanan Apache untuk menerapkan perubahan:</p>
+        <code>
+          <pre>arif@server-nagios:~/nagios-4.4.6$ sudo systemctl restart apache2</pre>
+        </code>
+        <p>Langkah 6: Akses UI Web Nagios</p>
+        <p>Sekarang, buka browser web Kita dan akses antarmuka web Nagios menggunakan URL http://nagios-server-ip/nagios/. Anda akan diminta untuk memberikan username dan password admin seperti yang ditunjukkan di bawah ini:</p>
+        <img src="img/1.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Berikan nama pengguna, kata sandi, dan kata sandi admin Nagios Kita dan klik tombol Masuk.</p>
+        <p>Kita akan melihat dasbor Nagios di halaman berikut:</p>
+        <img src="img/2.png" alt="tampilan nagios" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Klik pada service di panel kiri, Kita akan melihat semua layanan di halaman berikut:</p>
+        <img src="img/3.png" alt="tampilan nagios" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Langkah 7: Tambahkan Host Pemantauan ke Server Nagios</p>
+        <p>Selanjutnya, Kita perlu menginstal agen Nagios pada sistem klien dan menambahkannya ke server Nagios.</p>
+        <p>Pertama, instal paket Nagios dan NRPE pada sistem klien dengan perintah berikut:</p>
+        <p>Masuk Ke server Joomla</p>
+        <code>
+          <pre>arif@Testing:~$ ssh arif@192.168.100.88</pre>
+          <pre>arif@server-joomla:~$ sudo apt-get update</pre>
+          <pre>arif@server-joomla:~$ sudo apt-get install nagios-nrpe-server monitoring-plugins -y</pre>
+        </code>
+        <p>Setelah terinstal, edit file nrpe.cfg dan tentukan IP server Nagios dan IP CLient Anda:</p>
+        <code>
+          <pre>arif@server-joomla:~$ sudo vim /etc/nagios/nrpe.cfg</pre>
+        </code>
+        <p>Ubah baris berikut yang cocok dengan IP server dan klien Anda:</p>
+        <p>192.168.100.88 itu IP Client Joomla</p>
+        <p>192.168.100.118 itu IP Server Nagios:</p>
+        <code>
+          <pre>
+server_address=192.168.100.88
+allowed_hosts=127.0.0.1,::1,192.168.100.118</pre
+          >
+        </code>
+        <p>Simpan dan tutup file. Kemudian edit nrpe_local.cfg:</p>
+        <code>
+          <pre>arif@server-joomla:~$ sudo vim /etc/nagios/nrpe_local.cfg</pre>
+        </code>
+        <p>Tambahkan atau ubah baris berikut:</p>
+        <code>
+          <pre>
+command[check_root]=/usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /
+command[check_ping]=/usr/lib/nagios/plugins/check_ping -H 192.168.100.88 -w 100.0,20% -c 500.0,60% -p 5
+command[check_http]=/usr/lib/nagios/plugins/check_http -I 192.168.100.88
+command[check_ssh]=/usr/lib/nagios/plugins/check_ssh -4 192.168.100.88</pre
+          >
+        </code>
+        <p>Simpan dan tutup file kemudian restart layanan Nagios NRPE dan aktifkan untuk memulai saat reboot sistem:</p>
+        <code>
+          <pre>
+arif@server-joomla:~$ sudo systemctl restart nagios-nrpe-server.service 
+arif@server-joomla:~$ sudo systemctl enable nagios-nrpe-server.service </pre
+          >
+        </code>
+        <p>Kita dapat memeriksa status layanan dengan perintah berikut:</p>
+        <code>
+          <pre>arif@server-joomla:~$ sudo systemctl status nagios-nrpe-server.service</pre>
+        </code>
+        <p>Output</p>
+        <code>
+          <pre>
+● nagios-nrpe-server.service - Nagios Remote Plugin Executor
+     Loaded: loaded (/lib/systemd/system/nagios-nrpe-server.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sat 2022-03-26 23:41:57 UTC; 56s ago
+       Docs: http://www.nagios.org/documentation
+   Main PID: 28782 (nrpe)
+      Tasks: 1 (limit: 1071)
+     Memory: 744.0K
+     CGroup: /system.slice/nagios-nrpe-server.service
+             └─28782 /usr/sbin/nrpe -c /etc/nagios/nrpe.cfg -f
+
+Mar 26 23:41:57 server-joomla systemd[1]: Started Nagios Remote Plugin Executor.
+Mar 26 23:41:57 server-joomla nrpe[28782]: Starting up daemon
+Mar 26 23:41:57 server-joomla nrpe[28782]: Server listening on 192.168.100.88 port 5666.
+Mar 26 23:41:57 server-joomla nrpe[28782]: Listening for connections on port 5666
+Mar 26 23:41:57 server-joomla nrpe[28782]: Allowing connections from: 127.0.0.1,::1,192.168.100.118</pre
+          >
+        </code>
+        <p>Langkah 8: Tambahkan Host Klien ke Server Nagios</p>
+        <p>Selanjutnya, Kita perlu menambahkan host klien ke server Nagios dan menentukan layanan yang ingin Kita pantau.</p>
+        <p>Di server Nagios, buat file baru bernama nagiosclient.cfg:</p>
+        <p>Di Server NaGIOS</p>
+        <code>
+          <pre>arif@server-nagios:/usr/local/nagios/etc$ sudo vim /usr/local/nagios/etc/servers/nagiosclient.cfg</pre>
+          <pre>
+define host {
+      use                          linux-server
+      host_name                    nagiosclient
+      alias                        Ubuntu Host
+      address                      192.168.100.88
+      register                     1
+}
+
+define service {
+      host_name                       nagiosclient
+      service_description             PING
+      check_command                   check_nrpe!check_ping
+      max_check_attempts              2
+      check_interval                  2
+      retry_interval                  2
+      check_period                    24x7
+      check_freshness                 1
+      contact_groups                  admins
+      notification_interval           2
+      notification_period             24x7
+      notifications_enabled           1
+      register                        1
+}
+
+define service {
+      host_name                       nagiosclient
+      service_description             Check Users
+      check_command                   check_nrpe!check_users
+      max_check_attempts              2
+      check_interval                  2
+      retry_interval                  2
+      check_period                    24x7
+      check_freshness                 1
+      contact_groups                  admins
+      notification_interval           2
+      notification_period             24x7
+      notifications_enabled           1
+      register                        1
+}
+
+define service {
+      host_name                       nagiosclient
+      service_description             Check SSH
+      check_command                   check_nrpe!check_ssh
+      max_check_attempts              2
+      check_interval                  2
+      retry_interval                  2
+      check_period                    24x7
+      check_freshness                 1
+      contact_groups                  admins
+      notification_interval           2
+      notification_period             24x7
+      notifications_enabled           1
+      register                        1
+}
+
+define service {
+      host_name                       nagiosclient
+      service_description             Check Root / Disk
+      check_command                   check_nrpe!check_root
+      max_check_attempts              2
+      check_interval                  2
+      retry_interval                  2
+      check_period                    24x7
+      check_freshness                 1
+      contact_groups                  admins
+      notification_interval           2
+      notification_period             24x7
+      notifications_enabled           1
+      register                        1
+}
+
+define service {
+      host_name                       nagiosclient
+      service_description             Check HTTP
+      check_command                   check_nrpe!check_http
+      max_check_attempts              2
+      check_interval                  2
+      retry_interval                  2
+      check_period                    24x7
+      check_freshness                 1
+      contact_groups                  admins
+      notification_interval           2
+      notification_period             24x7
+      notifications_enabled           1
+      register                        1
+}
+    </pre
+          >
+        </code>
+        <p>Simpan dan tutup file kemudian restart layanan Nagios untuk menerapkan perubahan:</p>
+        <code>
+          <pre>
+arif@server-nagios:/usr/local/nagios/etc$ sudo systemctl restart nagios
+arif@server-nagios:/usr/local/nagios/etc$ sudo systemctl status nagios</pre
+          >
+        </code>
+        <p>Langkah 9: Verifikasi Nagios</p>
+        <p>Sekarang, kembali ke antarmuka web Nagios dan klik hosts di panel kiri, Kita akan melihat semua host klien yang baru ditambahkan di halaman berikut:</p>
+        <img src="img/4.png" alt="tampilan nagios" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Sekarang, klik pada tab service di panel kiri, Kita akan melihat semua layanan di halaman berikut:</p>
+        <img src="img/5.png" alt="tampilan nagios" width="1000" class="rounded-circle img-thumbnail" />
+      </section>
+      
+      <section class="main-section" id="Installation_Zabbix">
+        <header>Zabbix</header>
+        <p>Zabbix is designed primarily as an IT infrastructure monitoring tool. New features are generally released every six months to major versions and every 1.5 years to LTS versions.
+            Released under the terms of GNU General Public License version 2, Zabbix is free software that does not require a license to use any of its features. Even though Zabbix is open-source software, it is a closed development software product, developed by Zabbix LLC based in Riga Latvia.
+        </p>
+
+        <header>Use</header>
+        <p>1. Pilih platform</p>
+        <ul>
+          <li>ZABBIX VERSION > 6.0 LTS</li>
+          <li>OS DISTRIBUTION > Ubuntu</li>
+          <li>OS VERSION > 20.04</li>
+          <li>WEB SERVER > NGINX</li>
+        </ul>
+        <header>Installation Zabbix dan Monitoring Website di Ubuntu 20.04</header>
+        <p>2. Instal dan konfigurasikan server Zabbix untuk platform Anda</p>
+        <p>a. Install Zabbix repository</p>
+        <code>
+          <pre>
+arif@server-zabbix:~$ sudo apt-get update 
+arif@server-zabbix:~$ cd /usr/local/src/
+arif@server-zabbix:/usr/local/src$ sudo wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-1+ubuntu20.04_all.deb
+arif@server-zabbix:/usr/local/src$ sudo dpkg -i zabbix-release_6.0-1+ubuntu20.04_all.deb 
+arif@server-zabbix:/usr/local/src$ sudo apt-get update</pre>
+        </code>
+        <p>b. Instal server Zabbix, frontend, agen </p>
+        <code>
+          <pre>
+arif@server-zabbix:/usr/local/src$ sudo apt install zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent</pre>
+        </code>
+        <p>c. Create initial database</p>
+        <p>Pastikan Anda memiliki server database dan berjalan.</p>
+        <p>Jalankan yang berikut ini di host database Anda.</p>
+        <code>
+          <pre>
+arif@server-zabbix:/usr/local/src$ sudo apt-get install mysql-server mysql-client</pre>
+        </code>
+        <p>Supaya Aman</p>
+        <code>
+          <pre>
+arif@server-zabbix:/usr/local/src$ sudo mysql_secure_installation</pre>
+        </code>
+        <p>Masuk ke Database</p>
+        <code>
+          <pre>
+root@server-zabbix:/usr/local/src# mysql -u root -p
+
+mysql> create database zabbix character set utf8mb4 collate utf8mb4_bin;
+Query OK, 1 row affected (0.89 sec)
+
+mysql> create user zabbix@localhost identified by 'Password';
+Query OK, 0 rows affected (0.55 sec)
+
+mysql> grant all privileges on zabbix.* to zabbix@localhost;
+Query OK, 0 rows affected (0.74 sec)
+
+mysql> quit</pre>
+        </code>
+        <p>Pada host server Zabbix, impor skema dan data awal. Anda akan diminta untuk memasukkan kata sandi yang baru Anda buat.</p>
+        <p>AGA LAMA PROSES NYA TUNGGU SAJA</p>
+        <code>
+          <pre>
+zcat /usr/share/doc/zabbix-sql-scripts/mysql/server.sql.gz | mysql -uzabbix -p zabbix</pre>
+        </code>
+        <p>d. Configure the database for Zabbix server</p>
+        <p>Edit file /etc/zabbix/zabbix_server.conf</p>
+        <code>
+          <pre>
+root@server-zabbix:/usr/local/src# vim /etc/zabbix/zabbix_server.conf 
+DBPassword=password</pre>
+        </code>
+        <p>e. Configure PHP for Zabbix frontend</p>
+        <p>Edit file /etc/zabbix/nginx.conf, uncomment and set 'listen' and 'server_name' directives.</p>
+        <p>BUANG PAGAR NYA #</p>
+        <code>
+          <pre>
+  listen          80;
+  server_name     192.168.100.233;</pre>
+        </code>
+        <p>F. Mulai server Zabbix dan proses agen</p>
+        <p>Mulai proses server dan agen Zabbix dan buat itu mulai saat boot sistem.</p>
+        <code>
+          <pre>
+root@server-zabbix:/usr/local/src# systemctl restart zabbix-server zabbix-agent nginx php7.4-fpm
+root@server-zabbix:/usr/local/src# systemctl enable zabbix-server zabbix-agent nginx php7.4-fpm</pre>
+        </code>
+        <p>G. Konfigurasikan frontend Zabbix</p>
+        <p>Hubungkan ke frontend Zabbix yang baru Anda instal: http://server_ip_or_name</p>
+        <p>Ikuti langkah-langkah yang dijelaskan dalam dokumentasi Zabbix: Menginstal frontend</p>
+        <p>http://192.168.100.233</p>
+        <img src="img-zabbix/1.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/2.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/3.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/4.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/5.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/6.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p></p>
+        <img src="img-zabbix/7.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <p>Sorry Ini Screnshoot Yang Sudah Ada Monitoring Web Nya, Pastikan Running Aja</p>
+        <img src="img-zabbix/8.png" alt="login" width="1000" class="rounded-circle img-thumbnail" />
+        <code>
+          <pre> 
+username : Admin
+password : zabbix</pre>
+        </code>
+      </section>
+
+      <section class="main-section" id="Open_VPN_IPv4">
+        <header>Open VPN IPv4</header>
+        <p>
+          OpenVPN is a virtual private network (VPN) system that implements techniques to create secure point-to-point or site-to-site connections in routed or bridged configurations and remote access facilities. It implements both client
+          and server applications.
+        </p>
+        <p>
+          OpenVPN allows peers to authenticate each other using pre-shared secret keys, certificates or username/password. When used in a multiclient-server configuration, it allows the server to release an authentication certificate for
+          every client, using signatures and certificate authority.
+        </p>
+        <p>
+          It uses the OpenSSL encryption library extensively, as well as the TLS protocol, and contains many security and control features. It uses a custom security protocol[11] that utilizes SSL/TLS for key exchange. It is capable of
+          traversing network address translators (NATs) and firewalls.
+        </p>
+        <p>OpenVPN has been ported and embedded to several systems. For example, DD-WRT has the OpenVPN server function. SoftEther VPN, a multi-protocol VPN server, also has an implementation of OpenVPN protocol.</p>
+        <p>It was written by James Yonan and is free software, released under the terms of the GNU General Public License version 2 (GPLv2). [12] Additionally, commercial licenses are available.</p>
+
+        <header>Install Open VPN Dan Menggunakan</header>
+        <p>OpenVPN Instalasi di Ubuntu 20.04.</p>
+        <p>INSTALL OPENVPN DI SERVER</p>
+        <p>YANG BAGUS BUAT VPN ITU PAKE (IPSEC DAN OPENVPN) JANGAN PAKE PPTP DAN I2TP KARENA PAKE USERNAME DAN PASSWORD GA PAKE ENKRIPSI</p>
+
+        <p>Step 1 Update system</p>
+        <code>
+          <pre>
+root@server:/home/arif# sudo apt update
+root@server:/home/arif# sudo apt upgrade</pre
+          >
+        </code>
+
+        <p>Step 2 – Cek IP address</p>
+        <code>
+          <pre>
+root@server:/home/arif# ip a
+root@server:/home/arif# ip link
+root@server:/home/arif# ifconfig wlx1cbfce9982b7 172.16.100.12 netmask 255.255.255.0</pre
+          >
+        </code>
+
+        <p>Step 3 – Download & run openvpn-install.sh script</p>
+        <p>Pastikan tidak ada yang menggunakan repository ubuntu</p>
+        <code>
+          <pre>root@server:/home/arifsudo rm -Rf /var/lib/dpkg/lock</pre>
+        </code>
+
+        <p>Download Open VPN</p>
+        <code>
+          <pre>
+root@server:/home/arif# chmod 644 /usr/local/src/
+root@server:/home/arif# cd /usr/local/src/
+root@server:/usr/local/src# wget https://git.io/vpn -O openvpn-install.sh
+root@server:/usr/local/src# chmod +x openvpn-install.sh</pre
+          >
+        </code>
+
+        <p>Jalankan</p>
+        <code>
+          <pre>root@server:/usr/local/src# sudo ./openvpn-install.sh</pre>
+        </code>
+        <code>
+          <pre>
+Welcome to this OpenVPN road warrior installer!
+Which IPv4 address should be used?
+1) 192.168.100.21
+2) 172.16.100.12
+IPv4 address [1]: 1</pre
+          >
+        </code>
+
+        <code>
+          <pre>
+This server is behind NAT. What is the public IPv4 address or hostname?
+Public IPv4 address / hostname [180.254.68.214]: 192.168.100.21
+Which protocol should OpenVPN use?
+      1) UDP (recommended)
+      2) TCP
+      Protocol [1]: 1</pre
+          >
+        </code>
+        <code>
+          <pre>
+What port should OpenVPN listen to?
+Port [1194]: 2500
+
+Select a DNS server for the clients:
+      1) Current system resolvers
+      2) Google
+      3) 1.1.1.1 # <- YANG INI JUGA OKE
+      4) OpenDNS
+      5) Quad9
+      6) AdGuard
+DNS server [1]: 1
+Enter a name for the first client:
+Name [client]: yoai-testing
+Press any key to continue...
+ENTER</pre
+          >
+        </code>
+
+        <p>Check</p>
+        <code>
+          <pre>
+root@server:/usr/local/src# cd /root/
+root@server:~# mv yoai-testing.ovpn /home/arif/</pre
+          >
+        </code>
+
+        <p>COBA JGN GANTI USER KALO GA BISA PAKE DI BAWAH INI</p>
+        <code>
+          <pre>root@server:~# chown arif: /home/arif/yoai-testing.ovpn # <- JGN PAKE INI</pre>
+        </code>
+
+        <p>Step 4 – Connect an OpenVPN server using IOS/Android/Linux/Windows client</p>
+        <p>Copykan file sertifikat client.ovpn ke client, misalnya menggunakan perintah,</p>
+        <code>
+          <pre>
+root@parrot:~# scp -P3000 arif@192.168.100.21:*ovpn .
+root@parrot:~# sudo openvpn --config yoai-testing.ovpn</pre
+          >
+        </code>
+
+        <p>Linux Desktop: OpenVPN client configuration</p>
+        <p>Install</p>
+        <code>
+          <pre>root@parrot:~# sudo apt -y install openvpn</pre>
+        </code>
+
+        <p>Jalankan</p>
+        <p>KALO ngga PAKE INI BISA</p>
+        <code>
+          <pre>root@parrot:~# sudo --client --config yoai-testing.ovpn</pre>
+        </code>
+
+        <p>Step 5 - Verify/test the connectivity</p>
+        <code>
+          <pre>
+Execute the following commands after connecting to OpenVPN server from your Linux desktop:
+ping 10.8.0.1       # Ping to the OpenVPN server gateway
+ip route            # Make sure routing setup working
+dig TXT +short o-o.myaddr.l.google.com @ns1.google.com #Must return public IP address of OpenVPN server</pre
+          >
+        </code>
+
+        <p>Beberapa catatan troubleshooting OpenVPN & Client</p>
+        <p>Cek OpenVPN server for errors:</p>
+        <code>
+          <pre>journalctl --identifier ovpn-server</pre>
+        </code>
+
+        <p>Cek Filewall Rules</p>
+        <code>
+          <pre>
+cat /etc/rc.local
+#!/bin/sh -e
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j SNAT --to 172.26.6.74
+exit 0</pre
+          >
+        </code>
+
+        <p>Alternatif lain, run iptables command & sysctl command untuk verifikasi NAT rule setup</p>
+        <code>
+          <pre>
+sudo iptables -t nat -L -n -v
+sysctl net.ipv4.ip_forward
+Insert rules ke /etc/rc.local (kalau belum di insert)</pre
+          >
+        </code>
+
+        <code>
+          <pre>
+sudo sh /etc/rc.local
+sudo sysctl -w net.ipv4.ip_forward=1</pre
+          >
+        </code>
+        <p>Is OpenVPN server running and port is open? Use the ss command or netstat command and pidof command/ps command:</p>
+
+        <code>
+          <pre>
+$ netstat -tulpn | grep :1194 ## 1194 is the openvpn server port ##
+$ ss -tulpn | grep :1194 ## 1194 is the openvpn server port ##
+$ ps aux | grep openvpn ## is the openvpn server running? ##
+$ ps -C openvpn ## is the openvpn server running? ##
+$ pidof openvpn ## find the openvpn server PID ##</pre
+          >
+        </code>
+        <p>Verify that OpenVPN server runnign and Port is Open on ubuntu Linux If not running, restart the OpenVPN server:</p>
+        <code>
+          <pre>
+$ sudo systemctl restart openvpn@server
+Look out for errors:
+$ sudo systemctl status openvpn@server</pre
+          >
+        </code>
+        <p>Can the Linux desktop client connect to the OpenVPN server machine? First you need to run a simple test to see if the</p>
+        <p>OpenVPN server port (UDP 1194) accepts connections:</p>
+
+        <code>
+          <pre>
+$ nc -vu 104.20.187.5 1194
+Connection to 104.20.187.5 1194 port [udp/openvpn] succeeded!</pre
+          >
+        </code>
+      </section>
+    </main>
+  </body>
+</html>
